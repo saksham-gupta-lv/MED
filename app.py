@@ -39,15 +39,21 @@ def login_page():
         st.sidebar.success("Logged in successfully!")
     elif login_button:
         st.sidebar.error("Please enter valid credentials.")
-    st.title("My Eye Doctor")
+    st.title("MED Bonus Simulator")
     st.image("./Assets/MED.jpg")
 
 def home_tab():
-    st.title("My Eye Doctor")
+    st.title("MED Bonus Simulator")
+    img_html = """
+    <div style="background-color: white; padding: 10px; border-radius: 15px; margin-bottom: 20px;">
+    <!-- <img src="https://mms.businesswire.com/media/20240325471163/en/2076915/5/MED_logo_WSYV_blue_grey.jpg"style="width: 100%; height: auto; border-radius: 10px;" /> -->
+    <img src="https://d2q79iu7y748jz.cloudfront.net/s/_customcontent/0fd10b3309d47d6f5006b2700ba70b31"style="width: 100%; height: auto; border-radius: 10px; filter: brightness(0.8);" />
+    </div>
+    """
+    st.markdown(img_html, unsafe_allow_html=True)
     if st.button("SignOut"):
         st.session_state["logged_in"] = False
-        st.experimental_rerun()  # Refresh the page when SignOut is clicked
-    st.image("./Assets/MED.jpg")
+        st.experimental_rerun()  
     
 
 def bonus_tab():
@@ -60,15 +66,18 @@ def bonus_tab():
     col1, col2 = st.columns(2)
     with col1:
         office = st.selectbox("Select Office", df["office_name"].unique())
+    
+    # Prepare month dropdown with human-readable format
+    filtered_months = df[df["office_name"] == office]["month"].unique()
+    formatted_months = pd.to_datetime(filtered_months).strftime("%B %Y")  # e.g., "January 2022"
+    month_mapping = dict(zip(formatted_months, filtered_months))  # Map formatted to original values
+
     with col2:
-        # Ensure that the month selection is consistent with available months in filtered data
-        available_months = df[df["office_name"] == office]["month"].unique()
-        month = st.selectbox("Select Month", available_months)
+        # Display dropdown with formatted month names
+        selected_month = st.selectbox("Select Month", formatted_months)
+        month = month_mapping[selected_month]  # Convert back to the original format
 
-    # Update sales_band to be numeric from 1 to 5
-    df["sales_band"] = pd.Series([1, 2, 3, 4, 5] * 24)
-
-    # Filter data by office
+    # Filter data based on office and selected month
     filtered_data = df[df["office_name"] == office]
 
     # Handle time view aggregation
@@ -81,27 +90,24 @@ def bonus_tab():
 
     # Aggregation based on time view
     if time_view == "Monthly":
-        # Filter data by selected month (check to avoid empty data after filtering)
         data_view = filtered_data[filtered_data["month"] == month]
         if data_view.empty:
             st.warning("No data available for the selected month.")
             return
     elif time_view == "Quarterly":
-        # Aggregate numeric columns by quarter
         numeric_columns = ["actual_sales", "sales_goals", "actual_cont_per", "budget_cont_per"]
         data_view = filtered_data.groupby("quarter")[numeric_columns].mean().reset_index()
     elif time_view == "Yearly":
-        # Aggregate numeric columns by year
         numeric_columns = ["actual_sales", "sales_goals", "actual_cont_per", "budget_cont_per"]
         data_view = filtered_data.groupby("year")[numeric_columns].mean().reset_index()
 
     # Display filtered data
     st.write(f"Filtered Data ({time_view} View):", data_view)
 
-    # Calculate bonus tier based on actual sales and sales goals
+    # Calculate bonus tier
     data_view["bonus_tier"] = (data_view["actual_sales"] / data_view["sales_goals"]) * 100
 
-    # Display sliders for actual sales and sales goals
+    # Sliders for simulation
     col3, col4 = st.columns(2)
     with col3:
         actual_sales = st.slider(
@@ -121,13 +127,28 @@ def bonus_tab():
             step=1000
         )
 
-    # Simulated bonus tier calculation based on sliders
+    # Simulated bonus tier calculation
     data_view["simulated_bonus_tier"] = (actual_sales / sales_goals) * 100
 
-    # Plotting the bonus tiers with respect to time view
-    fig = go.Figure()
 
-    # X-axis will vary based on the time view (monthly, quarterly, or yearly)
+    bonus_lookup = {
+        0: {"Associate": 0, "AGM": 0, "GM": 0},
+        1: {"Associate": 250, "AGM": 500, "GM": 1000},
+        2: {"Associate": 300, "AGM": 600, "GM": 1200},
+        3: {"Associate": 500, "AGM": 750, "GM": 1500},
+        4: {"Associate": 800, "AGM": 1200, "GM": 2000}
+    }
+
+    # Determine bonus tier and bonus amount
+    simulated_bonus_tier = int(data_view["simulated_bonus_tier"].iloc[0] // 100)  # Assuming tiers are integers
+    bonus_amount = bonus_lookup.get(simulated_bonus_tier, {"Associate": 0, "AGM": 0, "GM": 0}).get(position, 0)
+
+    # Display the bonus statement
+    st.subheader("Bonus Information")
+    st.write(f"The Bonus amount for the **{position}** with the bonus **tier {simulated_bonus_tier}** is **{bonus_amount}** $.")
+
+    # Plotting bonus tiers
+    fig = go.Figure()
     if time_view == "Monthly":
         x_axis = data_view["month"]
     elif time_view == "Quarterly":
@@ -144,7 +165,7 @@ def bonus_tab():
                              y=data_view["simulated_bonus_tier"], 
                              mode='lines+markers', 
                              name='Simulated Bonus Tier', 
-                             line=dict(dash='dot',  color='darkblue')))
+                             line=dict(dash='dot', color='darkblue')))
 
     fig.update_layout(title=f"Bonus Tier Simulation ({time_view} View)",
                       xaxis_title="Time Period",
@@ -188,14 +209,13 @@ def main():
     <img src="https://media.licdn.com/dms/image/v2/C4E16AQFvv9gZE7jnnQ/profile-displaybackgroundimage-shrink_200_800/profile-displaybackgroundimage-shrink_200_800/0/1586208259986?e=2147483647&v=beta&t=n4oCq_IZQxcSc-hjVuurVBFWwLs7SPMltVkN88DI694"style="width: 100%; height: auto; border-radius: 10px;" />
     </div>
     """
-    # st.image("./Assets/MED.jpg")
     st.markdown(header_html, unsafe_allow_html=True)
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
     if st.session_state.logged_in:
         page_options = ["Home", "Bonus Tier Calculation","User Instruction"]
-        selected_page = option_menu(None, page_options, icons=["user","user", "user"], orientation="horizontal")
+        selected_page = option_menu(None, page_options, icons=["house","graph-up", "info"], orientation="horizontal")
 
         if selected_page == "Home":
             home_tab()
