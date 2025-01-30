@@ -108,14 +108,26 @@ def perf_tab():
     col1, col2 = st.columns([3, 1])
     with col1:
         fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=performance_simulated["Month"], y=performance_simulated["Simulated Commission"], mode='lines+markers', name="Simulated Commission"))
-        fig1.add_trace(go.Scatter(x=performance_simulated["Month"], y=performance_simulated["Simulated Discounting"], mode='lines+markers', name="Simulated Discounting"))
-        fig1.add_trace(go.Scatter(x=performance_simulated["Month"], y=performance_simulated["Simulated Remake"], mode='lines+markers', name="Simulated Remake"))
+        fig1.add_trace(go.Scatter(x=performance_simulated["Month"], y=performance_simulated["Simulated Commission"], 
+                                  mode='lines+markers', name="Simulated Commission", 
+                                  line=dict(color='dodgerblue', width=2)))
+        fig1.add_trace(go.Scatter(x=performance_simulated["Month"], y=performance_simulated["Simulated Discounting"], 
+                                  mode='lines+markers', name="Simulated Discounting", 
+                                  line=dict(color='royalblue', width=2)))
+        fig1.add_trace(go.Scatter(x=performance_simulated["Month"], y=performance_simulated["Simulated Remake"], 
+                                  mode='lines+markers', name="Simulated Remake", 
+                                  line=dict(color='navy', width=2)))
         fig1.update_layout(title="Simulated Performance", xaxis_title="Month", yaxis_title="Amount", template="plotly_white")
         st.plotly_chart(fig1)
 
-        fig2 = px.bar(performance_simulated, x="EmployeeDim[Employee Name]", y=["Simulated Commission", "Simulated Discounting", "Simulated Remake"], barmode="group", title="Performance Comparison")
+        fig2 = px.bar(performance_simulated, x="EmployeeDim[Employee Name]", 
+                      y=["Simulated Commission", "Simulated Discounting", "Simulated Remake"], 
+                      barmode="group", title="Performance Comparison", 
+                      color_discrete_map={"Simulated Commission": "dodgerblue", 
+                                          "Simulated Discounting": "royalblue", 
+                                          "Simulated Remake": "navy"})
         st.plotly_chart(fig2)
+    
         
     with col2:
         st.subheader("Top Employee")
@@ -223,3 +235,5 @@ def main():
 
 if __name__ == "__main__":
     main()        
+
+# ValueError: attempt to get argmax of an empty sequence
